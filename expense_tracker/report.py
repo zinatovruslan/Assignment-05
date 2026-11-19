@@ -1,4 +1,13 @@
+import csv
+import io
 import json
+
+FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def safe_cell(text):
+    """Neutralize spreadsheet formula injection by prefixing an apostrophe."""
+    return "'" + text if text.startswith(FORMULA_PREFIXES) else text
 
 
 class ReportFormat:
@@ -32,10 +41,14 @@ class CsvFormat(ReportFormat):
     mime_type = "text/csv"
 
     def render(self, tracker):
-        lines = ["description,amount,category"]
+        buf = io.StringIO()
+        writer = csv.writer(buf, lineterminator="\n")
+        writer.writerow(["description", "amount", "category"])
         for e in tracker.expenses:
-            lines.append(f"{e['description']},{e['amount']},{e['category']}")
-        return "\n".join(lines)
+            writer.writerow(
+                [safe_cell(e["description"]), e["amount"], safe_cell(e["category"])]
+            )
+        return buf.getvalue().rstrip("\n")
 
 
 class JsonFormat(ReportFormat):
@@ -44,8 +57,9 @@ class JsonFormat(ReportFormat):
     mime_type = "application/json"
 
     def render(self, tracker):
+        expenses = [{**e, "amount": float(e["amount"])} for e in tracker.expenses]
         return json.dumps(
-            {"expenses": tracker.expenses, "total": tracker.total()}, indent=2
+            {"expenses": expenses, "total": float(tracker.total())}, indent=2
         )
 
 

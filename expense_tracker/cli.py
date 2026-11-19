@@ -13,7 +13,7 @@ def main(argv=None):
 
     p_add = sub.add_parser("add")
     p_add.add_argument("description")
-    p_add.add_argument("amount", type=float)
+    p_add.add_argument("amount")
     p_add.add_argument("category")
 
     sub.add_parser("list")
@@ -27,7 +27,10 @@ def main(argv=None):
     tracker = ExpenseTracker(storage.load(args.file))
 
     if args.command == "add":
-        tracker.add(args.description, args.amount, args.category)
+        try:
+            tracker.add(args.description, args.amount, args.category)
+        except ValueError as exc:
+            parser.error(str(exc))
         storage.save(tracker.expenses, args.file)
         print("added")
     elif args.command == "list":
